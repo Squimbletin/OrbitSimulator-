@@ -1,275 +1,209 @@
-import math
-import tkinter as tk
-import turtle
-import time
-
-g = 6.67430e-11
-
-def forRadius(g, m, v):
-    return g * m / v ** 2
-
-def forVelocity(m, r, g):
-    return math.sqrt(g * m / r)
-
-def forMass(v, r, g):
-    return v ** 2 * r / g
-
-# Global animation and zoom parameters
-angle = 0
-step_time = 20  # Milliseconds per frame
-zoom_scale = 1.0  # Zoom level (1.0 = default)
-offset_x, offset_y = 0, 0  # Viewport offset
-panning = False  # Track if panning is active
-pan_start_x, pan_start_y = 0, 0  # Start position of panning
-velocity = 0  # Global variable to store velocity
-actual_radius = 0  # Global variable to store the actual radius
-
-def submit():
-    global velocity, actual_radius, r1, r2  # Make actual_radius a global variable
-    mass_input = mass_entry.get()
-    radius_input = radius_entry.get()
-    velocity_input = velocity_entry.get()
-    r1 = radius_inOrbit_entry.get()
-    r2 = radius_NotinOrbit_entry.get()
-
-    check = False
-    r = None  # Ensure r is defined here
-
-    try:
-        r1 = float(r1)
-        r2 = float(r2)
-
-        try:
-            m = float(mass_input)
-        except ValueError:
-            try:
-                v = float(velocity_input)
-                r = float(radius_input)
-                m = forMass(v, r, g)
-                check = True
-            except ValueError:
-                print("Invalid input.")
-
-        if not check:
-            try:
-                v = float(velocity_input)
-            except ValueError:
-                try:
-                    m = float(mass_input)
-                    r = float(radius_input)
-                    v = forVelocity(m, r, g)
-                    check = True
-                except ValueError:
-                    print("Invalid input.")
-
-        if not check:
-            try:
-                r = float(radius_input)
-            except ValueError:
-                try:
-                    m = float(mass_input)
-                    v = float(velocity_input)
-                    r = forRadius(g, m, v)
-                    check = True
-                except ValueError:
-                    print("Invalid input.")      
-    except ValueError:
-            print("Invalid input.") 
-
-    # Ensure r is assigned a value
-    if r is not None:
-        velocity = v  # Store the calculated or provided velocity globally
-        actual_radius = r  # Store the actual radius globally
-        Graphics(r, velocity)
-    else:
-        print("Please provide valid input for radius, mass, or velocity.")
-
-
-
-    velocity = v  # Store the calculated or provided velocity globally
-    actual_radius = r  # Store the actual radius globally
-    Graphics(r, velocity)
-
-def update_position():
-    global angle, planet, scaled_radius, angle_step
-
-    # Calculate new position with zoom and pan offset
-    x = offset_x + (scaled_radius * zoom_scale) * math.cos(math.radians(angle))
-    y = offset_y + (scaled_radius * zoom_scale) * math.sin(math.radians(angle))
-    planet.goto(x, y)
-
-    angle += angle_step
-    if angle >= 360:
-        angle -= 360  # Keep angle in range
-
-    turtle.update()
-    turtle.ontimer(update_position, step_time)
-
-def redraw_orbit():
-    global orbit_drawer, text_turtle, scaled_radius, velocity, actual_radius, scaling_factor, planet
-
-    # Ensure scaling_factor is calculated before use
-    if 'scaling_factor' not in globals():
-        scaling_factor = actual_radius / scaled_radius  # Default scaling factor if not calculated before
-
-    # Clear previous drawings
-    orbit_drawer.clear()
-    text_turtle.clear()
-
-    # Clear the planet (if it exists) before redrawing it
-    if planet:
-        planet.clear()
-
-    # Draw the orbit (affected by zoom)
-    orbit_drawer.penup()
-    orbit_drawer.goto(offset_x, offset_y - (scaled_radius * zoom_scale))
-    orbit_drawer.pendown()
-    orbit_drawer.circle(scaled_radius * zoom_scale)
-    orbit_drawer.penup()
-
-    # Draw the planet at the center (scaled according to r2 and scaling_factor)
-    planet_radius = r2 * scaling_factor  # Scale the planet radius
-    planet = turtle.Turtle()  # Create a new planet turtle each time
-    planet.shape("circle")
-    planet.color("blue")
-    planet.shapesize(planet_radius / 10)  # Scale the planet size
-    planet.penup()
-    planet.goto(offset_x, offset_y)  # Place it at the center of the orbit
-    planet.stamp()  # Stamp the planet shape at the center of the orbit
-
-    # Display velocity and scaling factor at fixed positions
-    text_turtle.penup()
-    text_turtle.goto(-350, 335)
-    text_turtle.write(f"Velocity: {velocity:.2f} m/s", align="left", font=("Arial", 12, "normal"))
-
-    text_turtle.goto(-350, 350)
-    text_turtle.write(f"Scale: 1:{scaling_factor:.2f}", align="left", font=("Arial", 12, "normal"))
-
-    turtle.update()
-
-def zoom(factor):
-    global zoom_scale, scaled_radius, offset_x, offset_y, planet
-
-    # Get the current planet position
-    planet_x, planet_y = planet.xcor(), planet.ycor()
-
-    # Apply zoom factor to zoom scale
-    old_zoom = zoom_scale
-    zoom_scale *= factor
-
-    print(f"Zooming: {old_zoom} -> {zoom_scale}")  # Debugging output
-
-    # Calculate the new offset to keep the planet centered during zoom
-    offset_x = planet_x - planet_x * factor
-    offset_y = planet_y - planet_y * factor
-
-    # Recalculate scaled radius based on new zoom scale
-    redraw_orbit()
-
-
-def zoom_in():
-    zoom(1.1)  # Zoom in by increasing scale
-
-def zoom_out():
-    zoom(0.9)  # Zoom out by decreasing scale
-
-def move_left():
-    global offset_x
-    offset_x += 20
-    redraw_orbit()
-
-def move_right():
-    global offset_x
-    offset_x -= 20
-    redraw_orbit()
-
-def move_up():
-    global offset_y
-    offset_y -= 20
-    redraw_orbit()
-
-def move_down():
-    global offset_y
-    offset_y += 20
-    redraw_orbit()
-
-turtle.listen()
-turtle.onkeypress(zoom_in, "equal")  # Use 'equal' for the '+' key
-turtle.onkeypress(zoom_out, "minus")  # Use 'minus' for the '-' key
-turtle.onkeypress(move_left, "Left")
-turtle.onkeypress(move_right, "Right")
-turtle.onkeypress(move_up, "Up")
-turtle.onkeypress(move_down, "Down")
-
-
-def Graphics(radius, velocity):
-    global planet, scaled_radius, angle_step, orbit_drawer, text_turtle, scaling_factor
-
-    # Ensure scaling_factor is set here
-    max_display_radius = 400 * 0.4
-    scaling_factor = max_display_radius / radius if radius > max_display_radius else 1
-    scaled_radius = radius * scaling_factor
-
-    orbit_drawer = turtle.Turtle()
-    orbit_drawer.speed(0)
-    orbit_drawer.hideturtle()
-
-    text_turtle = turtle.Turtle()
-    text_turtle.hideturtle()
-
-    # Create planet object
-    radius_planet = r1 * scaling_factor / 10  # Scale the radius of the orbiting planet
-    planet = turtle.Turtle()
-    planet.shape("circle")
-    planet.color("blue")
-    planet.shapesize(radius_planet)  # Set the scaled size of the orbiting planet
-    planet.penup()
-
-    orbital_circumference = 2 * math.pi * radius
-    time_per_orbit = orbital_circumference / velocity
-    angle_step = (360 / time_per_orbit) * (step_time / 1000) * 5000
-
-    redraw_orbit()
-    update_position()
-    turtle.mainloop()
-
-UserInput = tk.Tk()
-UserInput.title("Orbit Calculator")
-
-label = tk.Label(UserInput, text="Enter your data (you can leave one blank and it will be calculated)")
-label.pack()
-
-label = tk.Label(UserInput, text="Mass of Planet (kg):")
-label.pack()
-
-mass_entry = tk.Entry(UserInput)
-mass_entry.pack()
-
-label = tk.Label(UserInput, text="Velocity of object in orbit (m/s):")
-label.pack()
-
-velocity_entry = tk.Entry(UserInput)
-velocity_entry.pack()
-
-label = tk.Label(UserInput, text="Radius of orbit (M):")
-label.pack()
-
-radius_entry = tk.Entry(UserInput)
-radius_entry.pack()
-
-label = tk.Label(UserInput, text="Radius of planet in orbit (M):")
-label.pack()
-
-radius_inOrbit_entry = tk.Entry(UserInput)
-radius_inOrbit_entry.pack()
-
-label = tk.Label(UserInput, text="Radius of main planet (M):")
-label.pack()
-
-radius_NotinOrbit_entry = tk.Entry(UserInput)
-radius_NotinOrbit_entry.pack()
-
-submit_button = tk.Button(UserInput, text="Submit", command=submit)
-submit_button.pack()
-
-UserInput.mainloop()
+import pygame
+import numpy as np
+from random import randint
+
+# Initialize Pygame
+pygame.init()
+
+screen_info = pygame.display.Info()
+winSize = (screen_info.current_w, screen_info.current_h)
+win = pygame.display.set_mode(winSize, pygame.FULLSCREEN)
+
+# Colors
+WHITE = (255, 255, 255)
+YELLOW = (255, 255, 0)  # Sun
+BLUE = (0, 0, 255)  # Planet
+
+# Constants for simulation
+AU_to_pixels = 15  # Scale: 1 AU = 300 pixels
+center_x, center_y = winSize[0] // 2, winSize[1] // 2  # Center screen
+
+# Planetary Data (Example: Earth)
+a_AU = 1.0  # Semi-major axis in AU
+e = 0.017  # Eccentricity
+
+sun_radius = 6.95700e8
+
+stars = [((randint(150, 200), randint(150, 200), randint(150, 200)), (randint(1, winSize[0]), randint(1, winSize[1])), randint(1, 2)) for _ in range(250)]
+def draw_stars():
+    for star in stars:
+        pygame.draw.circle(win, star[0], star[1], star[2])
+
+
+solar_system_data = {
+    "Mercury": {
+        "colour": (169, 169, 169),
+        "Mass_kg": 3.301e23,
+        "Radius_m": 2.4397e6,
+        "Semi_Major_Axis_m": 5.79e10,
+        "a_AU": 0.387,
+        "e": 0.206,
+        "Orbital_Period_s": 7.60e6,
+        "Orbital_Velocity_m_s": 4.788e4,
+        "GM_m3_s2": 2.2032e13
+    },
+    "Venus": {
+        "colour": (255, 165, 0),
+        "Mass_kg": 4.867e24,
+        "Radius_m": 6.0518e6,
+        "Semi_Major_Axis_m": 1.08e11,
+        "a_AU": 0.723,
+        "e": 0.007,
+        "Orbital_Period_s": 1.94e7,
+        "Orbital_Velocity_m_s": 3.503e4,
+        "GM_m3_s2": 3.2486e14
+    },
+    "Earth": {
+        "colour": (0, 0, 255),
+        "Mass_kg": 5.972e24,
+        "Radius_m": 6.371e6,
+        "Semi_Major_Axis_m": 1.50e11,
+        "a_AU": 1.000,
+        "e": 0.017,
+        "Orbital_Period_s": 3.16e7,
+        "Orbital_Velocity_m_s": 2.979e4,
+        "GM_m3_s2": 3.986e14
+    },
+    "Mars": {
+        "colour": (0, 0, 255),
+        "Mass_kg": 6.417e23,
+        "Radius_m": 3.3895e6,
+        "Semi_Major_Axis_m": 2.28e11,
+        "a_AU": 1.524,
+        "e": 0.093,
+        "Orbital_Period_s": 5.93e7,
+        "Orbital_Velocity_m_s": 2.413e4,
+        "GM_m3_s2": 4.2828e13
+    },
+    "Jupiter": {
+        "colour": (255, 0, 0),
+        "Mass_kg": 1.898e27,
+        "Radius_m": 6.9911e7,
+        "Semi_Major_Axis_m": 7.78e11,
+        "a_AU": 5.204,
+        "e": 0.049,
+        "Orbital_Period_s": 3.74e8,
+        "Orbital_Velocity_m_s": 1.306e4,
+        "GM_m3_s2": 1.2669e17
+    },
+    "Saturn": {
+        "colour": (210, 180, 140),
+        "Mass_kg": 5.683e26,
+        "Radius_m": 5.8232e7,
+        "Semi_Major_Axis_m": 1.43e12,
+        "a_AU": 9.582,
+        "e": 0.056,
+        "Orbital_Period_s": 9.29e8,
+        "Orbital_Velocity_m_s": 9.645e3,
+        "GM_m3_s2": 3.7931e16
+    },
+    "Uranus": {
+        "colour": (0, 255, 255),
+        "Mass_kg": 8.681e25,
+        "Radius_m": 2.5362e7,
+        "Semi_Major_Axis_m": 2.87e12,
+        "a_AU": 19.201,
+        "e": 0.046,
+        "Orbital_Period_s": 2.65e9,
+        "Orbital_Velocity_m_s": 6.800e3,
+        "GM_m3_s2": 5.7939e15
+    },
+    "Neptune": {
+        "colour": (0, 0, 139),
+        "Mass_kg": 1.024e26,
+        "Radius_m": 2.4622e7,
+        "Semi_Major_Axis_m": 4.50e12,
+        "a_AU": 30.070,
+        "e": 0.010,
+        "Orbital_Period_s": 5.20e9,
+        "Orbital_Velocity_m_s": 5.432e3,
+        "GM_m3_s2": 6.8365e15
+    }
+}
+
+# Find the maximum planet radius from the data
+max_radius = max(data["Radius_m"] for data in solar_system_data.values())
+
+# Define the desired maximum planet radius on the screen (e.g., 30 pixels)
+desired_max_radius = 100
+
+# Calculate the scaling factor
+scaling_factor = desired_max_radius / (sun_radius / 1e6)  # Convert meters to kilometers and scale
+print(scaling_factor)
+
+# Function to calculate orbit position
+def get_orbit_position(theta, a, e):
+    """Compute (x, y) position for given true anomaly theta."""
+    r = (a * (1 - e**2)) / (1 + e * np.cos(theta))  # Orbital equation
+    x = r * np.cos(theta)  # Convert to Cartesian
+    y = r * np.sin(theta)
+    return int(center_x + x), int(center_y - y)  # Translate to screen center
+
+# Generate orbit paths for all planets
+orbit_paths = {}
+for planet, data in solar_system_data.items():
+    a_pixels = (data["Semi_Major_Axis_m"] / 1.50e11) * AU_to_pixels  # Normalize based on Earth's semi-major axis
+    e = data["e"]
+    
+    num_points = 360
+    theta_vals = np.linspace(0, 2 * np.pi, num_points)
+    orbit_paths[planet] = [get_orbit_position(theta, a_pixels, e) for theta in theta_vals]
+
+# Simulation loop
+running = True
+theta_values = {planet: 0 for planet in solar_system_data}  # Start position for each planet
+clock = pygame.time.Clock()
+
+zoom_factor = 1.0  # Initial zoom level
+
+while running:
+    win.fill((0, 0, 0))  # Clear screen
+
+    draw_stars()
+
+    SUN_RELATIVE_SIZE = 0.2  # Adjust for realism (tweak as needed)
+    sun_scaled_radius = max(10, SUN_RELATIVE_SIZE * AU_to_pixels * zoom_factor)
+
+
+    # Draw the Sun
+    pygame.draw.circle(win, YELLOW, (center_x, center_y), int(sun_scaled_radius))
+
+    for planet, data in solar_system_data.items():
+        a_pixels = data["a_AU"] * AU_to_pixels * zoom_factor  # Apply zoom factor to orbit
+        e = data["e"]
+        orbital_period = data["Orbital_Period_s"]
+
+        # **Fix 1: Recompute the orbit path dynamically**
+        orbit_scaled = [
+            get_orbit_position(theta, a_pixels, e)  # Now recalculating with zoom
+            for theta in np.linspace(0, 2 * np.pi, 360)
+        ]
+        pygame.draw.aalines(win, WHITE, True, orbit_scaled, 1)
+
+        # Update planet position
+        theta_values[planet] += 0.002 * (3.16e7 / orbital_period)  # Adjust speed based on Earth's period
+        theta_values[planet] %= 2 * np.pi  # Keep within range
+
+        # Compute new planet position using **zoomed orbit parameters**
+        planet_x, planet_y = get_orbit_position(theta_values[planet], a_pixels, e)
+
+        # **Fix 2: Correct planet scaling**
+        scaled_radius = data["Radius_m"] / 1e6 * scaling_factor * zoom_factor
+        pygame.draw.circle(win, data["colour"], (planet_x, planet_y), int(scaled_radius))
+
+    # Refresh display
+    pygame.display.flip()
+    clock.tick(60)  # Limit to 60 FPS
+
+    # Handle events
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:  # Zoom in
+                zoom_factor *= 1.1
+            if event.key == pygame.K_DOWN:  # Zoom out
+                zoom_factor /= 1.1
+
+
+pygame.quit()
