@@ -161,7 +161,7 @@ while running:
 
     draw_stars()
 
-    SUN_RELATIVE_SIZE = 0.2  # Adjust for realism (tweak as needed)
+    SUN_RELATIVE_SIZE = 0.2 
     sun_scaled_radius = max(10, SUN_RELATIVE_SIZE * AU_to_pixels * zoom_factor)
 
 
@@ -173,7 +173,6 @@ while running:
         e = data["e"]
         orbital_period = data["Orbital_Period_s"]
 
-        # **Fix 1: Recompute the orbit path dynamically**
         orbit_scaled = [
             get_orbit_position(theta, a_pixels, e)  # Now recalculating with zoom
             for theta in np.linspace(0, 2 * np.pi, 360)
@@ -181,7 +180,7 @@ while running:
         pygame.draw.aalines(win, WHITE, True, orbit_scaled, 1)
 
         # Update planet position
-        theta_values[planet] += 0.002 * (3.16e7 / orbital_period)  # Adjust speed based on Earth's period
+        theta_values[planet] += 0.002 * (3.16e7 / orbital_period)  # Adjust speed based on Planet's period
         theta_values[planet] %= 2 * np.pi  # Keep within range
 
         # Compute new planet position using **zoomed orbit parameters**
